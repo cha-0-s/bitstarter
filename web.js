@@ -6,7 +6,7 @@ var app = express.createServer(express.logger());
 var buf = new Buffer(20);
 
 app.get('/', function(request, response) {
-    buf =  fs.readFile('index.html');
+    buf =  fs.readFile('./index.html');
     response.send(buf.toString());
 });
 
