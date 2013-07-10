@@ -27,24 +27,51 @@ var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
-var assertFileExists = function(infile) {
+var myArgs = require('optimist').argv;
+
+/*var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
         console.log("%s does not exist. Exiting.", instr);
         process.exit(1); // http://nodejs.org/api/process.html#process_process_exit_code
     }
     return instr;
-};
+};*/
+
 
 var cheerioHtmlFile = function(htmlfile) {
-    return cheerio.load(fs.readFileSync(htmlfile));
+    var pagesrc;
+    
+      if (myArgs.file) {
+      return cheerio.load(fs.readFileSync(htmlfile));
+    }
+    else if (myArgs.url) {
+        var resultstr = rest.get(myArgs.url).on('complete', function(result,response) {
+	   // console.log(result);  
+	    $ = cheerio.load(result);
+	    var checks = loadChecks(checksfile).sort();
+	    var out = {};
+	    for(var ii in checks) {
+		var present = $(checks[ii]).length > 0;
+		out[checks[ii]] = present;
+	    }
+            var outJson = JSON.stringify(out, null, 4);
+	    console.log(outJson);
+        });
+//        console.log(resultstr.request);
+	//return cheerio.load(resultstr);
+     }
+    else {
+	//console.log("No source specified.");
+        return null;
+    }
 };
 
 var loadChecks = function(checksfile) {
     return JSON.parse(fs.readFileSync(checksfile));
 };
 
-var checkHtmlFile = function(htmlfile, checksfile) {
+var checkHtml = function(htmlfile, checksfile) {
     $ = cheerioHtmlFile(htmlfile);
     var checks = loadChecks(checksfile).sort();
     var out = {};
@@ -52,6 +79,7 @@ var checkHtmlFile = function(htmlfile, checksfile) {
         var present = $(checks[ii]).length > 0;
         out[checks[ii]] = present;
     }
+    //console.log($.toString());
     return out;
 };
 
@@ -61,14 +89,16 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
+var sys = require('util');
+var rest = require('restler');
+var checks = myArgs.checks || CHECKSFILE_DEFAULT;
+
+
 if(require.main == module) {
-    program
-        .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+    var checkJson = checkHtml(myArgs.url||myArgs.file, checks);
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
-} else {
+} 
+else {
     exports.checkHtmlFile = checkHtmlFile;
 }
